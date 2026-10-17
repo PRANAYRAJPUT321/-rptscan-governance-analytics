@@ -1,15 +1,15 @@
-name: Vercel deploy (every 15 min + on push)
+name: Vercel deploy (on push, optional)
 
-# Deploys RPTScan to Vercel production on every push to the main development
-# branch and on a 15-minute schedule.
+# Optional: deploys RPTScan to Vercel production on every push once a
+# VERCEL_TOKEN secret exists. The 15-minute cadence is handled by scheduled
+# deploy checks outside GitHub, so this workflow has no timer of its own
+# (an idle 15-minute cron would burn ~2,900 Actions minutes a month).
 #
 # One-time setup (GitHub → Settings → Secrets and variables → Actions):
 #   VERCEL_TOKEN  — create at https://vercel.com/account/tokens
 # Optional alternative: VERCEL_DEPLOY_HOOK_URL (Vercel → Project → Settings →
 # Git → Deploy Hooks, needs the repo connected to the Vercel project).
 on:
-  schedule:
-    - cron: "*/15 * * * *"
   push:
     branches: [main, master, claude/rptscan-related-party-disclosure-5927g3]
   workflow_dispatch:

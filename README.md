@@ -57,8 +57,8 @@ npm test                     # engine validation tests
 
 Live: **https://rptscan.vercel.app**
 
-- `.github/workflows/scheduled-deploy.yml` deploys to production **on every push and every 15 minutes**. One-time setup: create a token at <https://vercel.com/account/tokens> and save it as the GitHub Actions secret `VERCEL_TOKEN`.
-- Alternatively connect the repo in *Vercel → Project → Settings → Git*; then every push auto-deploys and you can use a Deploy Hook URL as the `VERCEL_DEPLOY_HOOK_URL` secret instead of a token.
+- **Every 15 minutes** a scheduled deploy check compares the branch head with the live production deployment and deploys it if it is newer (four staggered hourly scheduled tasks, so the cadence survives session restarts).
+- Optional: connect the repo in *Vercel → Project → Settings → Git* so every push deploys instantly, or add a `VERCEL_TOKEN` GitHub Actions secret to enable `.github/workflows/scheduled-deploy.yml` (deploy on push).
 - AI works out of the box on Vercel via AI Gateway (free monthly credits on Hobby). Optionally add `ANTHROPIC_API_KEY` to use your own Anthropic account.
 
 ## Viva demonstration (3 minutes)
