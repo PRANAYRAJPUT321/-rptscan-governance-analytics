@@ -68,7 +68,12 @@ export default function CompanyTable({ companies, sectors }: { companies: Compan
                   </Link>
                 </td>
                 <td className="td text-slate-400">{c.sector}</td>
-                <td className="td num text-right">{pct(c.rptToRevenue)}</td>
+                <td className="td num text-right">
+                  <div>{pct(c.rptToRevenue)}</div>
+                  <div className="ml-auto mt-1 h-1 w-16 overflow-hidden rounded-full bg-white/5">
+                    <div className="h-full rounded-full bg-gradient-to-r from-brand-400 to-rose-400" style={{ width: `${Math.min(c.rptToRevenue / 0.6, 1) * 100}%` }} />
+                  </div>
+                </td>
                 <td className="td num text-right text-slate-400">{pct(c.rptToNetWorth)}</td>
                 <td className="td text-right">
                   <span className="num font-semibold" style={{ color: DQS_COLOR(c.disclosureScore) }}>
@@ -77,7 +82,7 @@ export default function CompanyTable({ companies, sectors }: { companies: Compan
                 </td>
                 <td className={`td num text-right ${c.roaNext < 0 ? "text-rose-400" : "text-slate-300"}`}>{c.roaNext.toFixed(1)}%</td>
                 <td className="td text-right">
-                  <span className={`num font-semibold ${c.risk >= 50 ? "text-rose-400" : c.risk >= 30 ? "text-amber-300" : "text-emerald-400"}`}>{c.risk}</span>
+                  <span className={`num inline-block min-w-[2.5rem] rounded-full px-2 py-0.5 text-center text-xs font-bold ring-1 ring-inset ${c.risk >= 50 ? "bg-rose-500/10 text-rose-300 ring-rose-500/30" : c.risk >= 30 ? "bg-amber-500/10 text-amber-300 ring-amber-500/30" : "bg-emerald-500/10 text-emerald-300 ring-emerald-500/30"}`}>{c.risk}</span>
                 </td>
                 <td className="td">
                   <div className="flex flex-wrap gap-1">

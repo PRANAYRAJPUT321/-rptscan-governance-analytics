@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { Gauge, HBars, PercentileStrip } from "@/components/charts";
+import { IconChat, IconCheck, IconHistory, IconPrint } from "@/components/icons";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { positionInSector, riskScore } from "@/lib/analysis";
 import { COMPANIES, SECTORS } from "@/lib/companies";
@@ -13,6 +15,8 @@ import { SAMPLE_COMPANY, SAMPLE_NOTE } from "@/lib/sample";
 import type { ExtractionResult } from "@/lib/types";
 
 type Source = "pdf" | "paste";
+
+const HISTORY_KEY = "rptscan.history.v1";
 
 const CAT_COLORS: Record<string, string> = {
   sale: "#10b981", purchase: "#3b82f6", services: "#06b6d4", loan: "#f43f5e", investment: "#a855f7", guarantee: "#f97316",
@@ -40,10 +44,17 @@ export default function ExtractPage() {
   const [progress, setProgress] = useState<[number, number] | null>(null);
   const [fileName, setFileName] = useState("");
 
+  const [history, setHistory] = useState<{ at: number; sector: string; result: ExtractionResult }[]>([]);
+
   const resultsRef = useRef<HTMLDivElement>(null);
   const sourceRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    try {
+      const h = localStorage.getItem(HISTORY_KEY);
+      if (h) setHistory(JSON.parse(h));
+    } catch {}
+    if (new URLSearchParams(window.location.search).get("sample")) loadSample();
     fetch("/api/extract")
       .then((r) => r.json())
       .then((d) => {
@@ -118,7 +129,7 @@ export default function ExtractPage() {
       const res = await fetch("/api/extract", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-      setResult(data);
+      keep(data);
     } catch (e) {
       // Offline / API unavailable: the rule engine also runs in the browser.
       const local = extractWithRules(text, {
@@ -128,12 +139,44 @@ export default function ExtractPage() {
         pageOfLine: linePages ? (l) => linePages[l - 1] : undefined,
       });
       local.warnings.unshift(`Server extraction unavailable (${(e as Error).message}); ran the rule engine in your browser.`);
-      setResult(local);
+      keep(local);
     } finally {
       setBusy(false);
       setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
     }
   }
+
+  /** Show a result and remember it (history + the Ask AI page reads the latest one). */
+  function keep(r: ExtractionResult) {
+    setResult(r);
+    const entry = { at: Date.now(), sector, result: r };
+    const next = [entry, ...history.filter((h) => h.result.company !== r.company)].slice(0, 6);
+    setHistory(next);
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+      localStorage.setItem(
+        "rptscan.lastExtraction",
+        JSON.stringify({
+          company: r.company,
+          sector,
+          fiscalYear: r.fiscalYear,
+          unit: r.unit,
+          note: r.note,
+          revenue: r.revenue,
+          netWorth: r.netWorth,
+          rptToRevenue: r.rptToRevenue,
+          rptToNetWorth: r.rptToNetWorth,
+          disclosureScore: r.disclosureScore,
+          tieOut: r.tieOut.status,
+          unmetChecks: r.lodr.filter((c) => !c.met).map((c) => c.id),
+          material: r.materialTransactions,
+          transactions: r.transactions.slice(0, 40).map((t) => `${t.party} | ${t.relationship} | ${t.nature} | ${t.amount}`),
+        }),
+      );
+    } catch {}
+  }
+
+  const step = !text.trim() ? 0 : !result ? 1 : result.tieOut.status !== "tied" ? 2 : 4;
 
   function jumpTo(line: number) {
     setActiveLine(line);
@@ -151,7 +194,59 @@ export default function ExtractPage() {
         came from, ties the total to the note&apos;s disclosed aggregate, scores disclosure against LODR, and places the company against its sector.
       </PageHeader>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <ol className="no-print mb-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {["Load the RPT note", "Extract with AI", "Validate citations & tie-out", "Score & compare"].map((label, i) => {
+          const done = step > i;
+          const current = step === i;
+          return (
+            <li
+              key={label}
+              className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition ${
+                done ? "border-emerald-500/25 bg-emerald-500/[0.06] text-emerald-200" : current ? "border-brand-400/40 bg-brand-500/10 text-white" : "border-white/[0.06] text-slate-500"
+              }`}
+            >
+              <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] font-bold ${done ? "bg-emerald-500 text-ink-950" : current ? "bg-brand-500 text-white" : "bg-white/10"}`}>
+                {done ? <IconCheck className="h-3.5 w-3.5" /> : i + 1}
+              </span>
+              <span className="leading-tight">{label}</span>
+            </li>
+          );
+        })}
+      </ol>
+
+      {history.length > 0 && (
+        <div className="no-print mb-6 flex flex-wrap items-center gap-2">
+          <span className="flex items-center gap-1.5 text-xs text-slate-500">
+            <IconHistory className="h-4 w-4" /> Recent
+          </span>
+          {history.map((h) => (
+            <button
+              key={h.at}
+              onClick={() => {
+                setResult(h.result);
+                setSector(h.sector);
+                setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+              }}
+              className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-slate-300 hover:border-brand-400/40 hover:text-white"
+            >
+              {h.result.company} · <span className="num">{h.result.disclosureScore}</span>
+            </button>
+          ))}
+          <button
+            onClick={() => {
+              setHistory([]);
+              try {
+                localStorage.removeItem(HISTORY_KEY);
+              } catch {}
+            }}
+            className="text-xs text-slate-600 hover:text-slate-400"
+          >
+            clear
+          </button>
+        </div>
+      )}
+
+      <div className="no-print grid gap-6 lg:grid-cols-3">
         <Card
           className="lg:col-span-2"
           title="1 · Source document"
@@ -285,7 +380,7 @@ export default function ExtractPage() {
         <div ref={resultsRef} className="scroll-mt-20">
           <Results result={result} sector={sector} onJump={jumpTo} />
 
-          <Card className="mt-6" title="Source note with citations" subtitle="Highlighted lines are cited by an extracted transaction; click a citation in the table to jump here">
+          <Card className="no-print mt-6" title="Source note with citations" subtitle="Highlighted lines are cited by an extracted transaction; click a citation in the table to jump here">
             <div ref={sourceRef} className="max-h-[28rem] overflow-auto rounded-xl bg-ink-950/70 p-3 font-mono text-xs leading-6">
               {sourceLines.map((l, i) => {
                 const n = i + 1;
@@ -398,7 +493,13 @@ function Results({ result, sector, onJump }: { result: ExtractionResult; sector:
         <Badge>{result.note}</Badge>
         <Badge>{result.fiscalYear}</Badge>
         <Badge>{result.unit}</Badge>
-        <div className="ml-auto flex gap-2">
+        <div className="no-print ml-auto flex flex-wrap gap-2">
+          <Link href="/ask" className="btn-ghost py-1.5 text-xs">
+            <IconChat className="h-3.5 w-3.5" /> Ask AI about this
+          </Link>
+          <button onClick={() => window.print()} className="btn-ghost py-1.5 text-xs">
+            <IconPrint className="h-3.5 w-3.5" /> Print report
+          </button>
           <button onClick={() => download("csv")} className="btn-ghost py-1.5 text-xs">
             ⬇ CSV
           </button>

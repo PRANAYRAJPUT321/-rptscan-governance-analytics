@@ -150,6 +150,25 @@ export async function analystNote(prompt: string): Promise<string> {
   return response.content.map((b) => (b.type === "text" ? b.text : "")).join("").trim();
 }
 
+export interface ChatTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
+/** Multi-turn analyst chat grounded in a data snapshot passed as the system prompt. */
+export async function chatAnswer(context: string, turns: ChatTurn[]): Promise<string> {
+  const response = await (await client()).messages.create({
+    ...gatewayExtras(),
+    model: AI_MODEL,
+    max_tokens: 4000,
+    output_config: { effort: "low" },
+    system: `You are RPTScan's AI analyst: an expert in Indian corporate governance, SEBI LODR related party transaction rules (Reg 23, Schedule V), Ind AS 24 and empirical finance. Answer questions about the study using ONLY the data below; compute from the CSV when needed and show the key numbers. Be concise (under 180 words), use markdown bullets and **bold** for key figures. When quoting company-level figures, note that the panel is simulated. If a question is outside the data, say so briefly and answer from general knowledge of LODR / Ind AS 24.\n\n${context}`,
+    messages: turns,
+  });
+  if (response.stop_reason === "refusal") throw new Error("declined");
+  return response.content.map((b) => (b.type === "text" ? b.text : "")).join("").trim();
+}
+
 type Extraction = z.infer<typeof ExtractionSchema>;
 
 /**

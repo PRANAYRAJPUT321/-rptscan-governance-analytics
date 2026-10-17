@@ -10,9 +10,12 @@ RPTScan uses AI (Claude) to read the related party transactions note of an India
 
 | Page | Purpose |
 | --- | --- |
-| **Study** (`/`) | Answer to the research question: scatter, quintile sorts, OLS regression, correlation matrix, sector medians |
-| **AI Extractor** (`/extract`) | The engine & viva demo: upload an annual report PDF → auto-locate the RPT note → extract with Claude → validate → LODR scorecard → sector comparison → AI analyst note → CSV/JSON export |
+| **Study** (`/`) | Answer to the research question: scatter, governance risk map, red-flag watchlist, quintile sorts, OLS regression, sector heatmap, correlation matrix |
+| **AI Extractor** (`/extract`) | The engine & viva demo: upload an annual report PDF → auto-locate the RPT note → extract with Claude → validate → LODR scorecard → sector comparison → AI analyst note → CSV/JSON export, printable report, saved history |
 | **Companies** (`/companies`) | Searchable, sortable table of the 100 companies; each company page shows it against its sector |
+| **Ask AI** (`/ask`) | Chat analyst grounded in the study data (and your latest extraction); rule-based answers when AI is unavailable |
+| **Compare** (`/compare`) | Up to 4 companies: governance radar (percentiles), side-by-side table, RPT mix |
+| **Regression Lab** (`/lab`) | Choose outcome, regressors, sector fixed effects and sample; OLS re-runs live with coefficient plot and added-variable plot |
 | **Methodology** (`/methodology`) | Formulas, validation test, LODR rubric, research design, artifacts A1/A2/A6/A7/A9, the 3-minute viva script |
 
 ## Engine — the calculation
