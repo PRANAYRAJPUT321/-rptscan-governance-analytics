@@ -51,9 +51,11 @@ npm test                     # engine validation tests
 
 ## Deployment (Vercel)
 
-- The Vercel project is linked to this GitHub repository, so **every push deploys automatically**.
-- `.github/workflows/scheduled-deploy.yml` also redeploys **every 15 minutes**. To enable it, create a Deploy Hook in *Vercel → Project → Settings → Git → Deploy Hooks* and save its URL as the GitHub Actions secret `VERCEL_DEPLOY_HOOK_URL`.
-- Add `ANTHROPIC_API_KEY` in *Vercel → Project → Settings → Environment Variables* to turn on AI extraction.
+Live: **https://rptscan.vercel.app**
+
+- `.github/workflows/scheduled-deploy.yml` deploys to production **on every push and every 15 minutes**. One-time setup: create a token at <https://vercel.com/account/tokens> and save it as the GitHub Actions secret `VERCEL_TOKEN`.
+- Alternatively connect the repo in *Vercel → Project → Settings → Git*; then every push auto-deploys and you can use a Deploy Hook URL as the `VERCEL_DEPLOY_HOOK_URL` secret instead of a token.
+- Add `ANTHROPIC_API_KEY` in *Vercel → Project → Settings → Environment Variables* to turn on Claude extraction (without it the rule engine runs).
 
 ## Viva demonstration (3 minutes)
 

@@ -235,6 +235,10 @@ export function extractWithRules(text: string, opts: ExtractOptions = {}): Extra
 export function scoreLodrRules(text: string, transactions: Transaction[]): LodrCheck[] {
   const lines = text.split("\n");
   return LODR_CHECKS.map((req) => {
+    if (req.id === "L1") {
+      const named = transactions.find((t) => ENTITY.test(t.party));
+      return { id: req.id, met: Boolean(named), evidence: named ? named.party : null };
+    }
     if (req.id === "L4") {
       const met = transactions.length > 0;
       return { id: req.id, met, evidence: met ? transactions[0].citation.quote : null };

@@ -1,24 +1,53 @@
-name: Scheduled Vercel deploy
+name: Vercel deploy (every 15 min + on push)
 
-# Redeploys production every 15 minutes (in addition to the automatic deploy on
-# every push from the Vercel Git integration). Requires the repository secret
-# VERCEL_DEPLOY_HOOK_URL — create it in Vercel → Project → Settings → Git →
-# Deploy Hooks, then add it under GitHub → Settings → Secrets → Actions.
+# Deploys RPTScan to Vercel production on every push to the main development
+# branch and on a 15-minute schedule.
+#
+# One-time setup (GitHub → Settings → Secrets and variables → Actions):
+#   VERCEL_TOKEN  — create at https://vercel.com/account/tokens
+# Optional alternative: VERCEL_DEPLOY_HOOK_URL (Vercel → Project → Settings →
+# Git → Deploy Hooks, needs the repo connected to the Vercel project).
 on:
   schedule:
     - cron: "*/15 * * * *"
+  push:
+    branches: [main, master, claude/rptscan-related-party-disclosure-5927g3]
   workflow_dispatch:
+
+concurrency:
+  group: vercel-production
+  cancel-in-progress: false
+
+env:
+  VERCEL_ORG_ID: team_oLnCCX633p1b5p3yeRjPd030
+  VERCEL_PROJECT_ID: prj_HlavOK1HcTAJaxw8btH7iKPxdGRX
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Vercel deploy hook
+      - name: Deploy hook
+        if: ${{ env.HOOK != '' }}
         env:
           HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: curl -fsS -X POST "$HOOK"
+
+      - uses: actions/checkout@v4
+        if: ${{ env.TOKEN != '' }}
+        env:
+          TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy with Vercel CLI
+        env:
+          TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
         run: |
-          if [ -z "$HOOK" ]; then
-            echo "::warning::VERCEL_DEPLOY_HOOK_URL secret is not set; skipping."
+          if [ -z "$TOKEN" ]; then
+            [ -n "$HOOK" ] && exit 0
+            echo "::warning::Neither VERCEL_TOKEN nor VERCEL_DEPLOY_HOOK_URL is set; skipping deploy."
             exit 0
           fi
-          curl -fsS -X POST "$HOOK"
+          npm i -g vercel@latest
+          vercel pull --yes --environment=production --token="$TOKEN"
+          vercel build --prod --token="$TOKEN"
+          vercel deploy --prebuilt --prod --token="$TOKEN"

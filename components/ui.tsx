@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 export function Card({ title, subtitle, action, children, className = "" }: { title?: ReactNode; subtitle?: ReactNode; action?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={`card card-pad ${className}`}>
+    <section className={`card card-pad min-w-0 ${className}`}>
       {(title || action) && (
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>

@@ -49,7 +49,7 @@ export default function Home() {
           title="RPT intensity vs next-year ROA"
           subtitle="Each dot is a company, coloured by disclosure quality; dashed line is the OLS fit"
           action={
-            <div className="flex gap-2 text-[11px] text-slate-400">
+            <div className="flex shrink-0 gap-2 whitespace-nowrap text-[11px] text-slate-400">
               <span className="flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-emerald-500" />≥80</span>
               <span className="flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-amber-500" />60–79</span>
               <span className="flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-rose-500" />&lt;60</span>
