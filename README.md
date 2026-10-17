@@ -36,7 +36,8 @@ Material RPT   = amount > min(₹1,000 cr, 10% of turnover)   (LODR Reg 23(1))
 
 - **Claude** (`claude-opus-5-5` by default, override with `ANTHROPIC_MODEL`) receives the line-numbered note and returns schema-constrained JSON (structured outputs via `zodOutputFormat`).
 - Deterministic code verifies every citation and computes the tie-out, ratios, materiality and score, so the AI reads and the code checks.
-- Without `ANTHROPIC_API_KEY`, a **rule-based engine** with the same output schema runs (server-side, or in the browser if the API is unreachable).
+- **On Vercel no key is needed**: requests go through Vercel AI Gateway (`anthropic/claude-opus-5`, fallback `anthropic/claude-sonnet-5`) authenticated with the deployment's own OIDC token. Set `ANTHROPIC_API_KEY` to call the Anthropic API directly instead, or `AI_GATEWAY_API_KEY` to use the gateway from local dev.
+- If the AI call fails, a **rule-based engine** with the same output schema runs (server-side, or in the browser if the API is unreachable).
 
 > ⚠️ **Data note.** The 100-company panel uses the real NSE company names and sectors, but its financial and governance figures are a **seeded simulation** (`lib/companies.ts`) so the analytics can be shown end to end. Replace rows with extractor output before drawing conclusions about any company.
 
@@ -55,7 +56,7 @@ Live: **https://rptscan.vercel.app**
 
 - `.github/workflows/scheduled-deploy.yml` deploys to production **on every push and every 15 minutes**. One-time setup: create a token at <https://vercel.com/account/tokens> and save it as the GitHub Actions secret `VERCEL_TOKEN`.
 - Alternatively connect the repo in *Vercel → Project → Settings → Git*; then every push auto-deploys and you can use a Deploy Hook URL as the `VERCEL_DEPLOY_HOOK_URL` secret instead of a token.
-- Add `ANTHROPIC_API_KEY` in *Vercel → Project → Settings → Environment Variables* to turn on Claude extraction (without it the rule engine runs).
+- AI works out of the box on Vercel via AI Gateway (free monthly credits on Hobby). Optionally add `ANTHROPIC_API_KEY` to use your own Anthropic account.
 
 ## Viva demonstration (3 minutes)
 

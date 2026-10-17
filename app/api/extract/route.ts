@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { aiEnabled, extractWithClaude } from "@/lib/ai";
+import { AI_MODEL, aiEnabled, aiProvider, extractWithClaude } from "@/lib/ai";
 import { extractWithRules } from "@/lib/extract";
 
 export const runtime = "nodejs";
@@ -39,5 +39,5 @@ export async function POST(req: Request) {
 }
 
 export async function GET() {
-  return NextResponse.json({ ai: aiEnabled() });
+  return NextResponse.json({ ai: aiEnabled(), provider: aiEnabled() ? aiProvider() : null, model: aiEnabled() ? AI_MODEL : null });
 }

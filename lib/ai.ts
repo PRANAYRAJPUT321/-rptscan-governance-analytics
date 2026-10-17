@@ -1,5 +1,6 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
+import { getVercelOidcToken } from "@vercel/oidc";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import { detectUnit, finalize, verifyQuote } from "./extract";
@@ -7,8 +8,29 @@ import { LODR_CHECKS } from "./lodr";
 import type { ExtractOptions } from "./extract";
 import type { Citation, ExtractionResult, LodrCheck, RptCategory, Transaction } from "./types";
 
-export const AI_MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-5-5";
-export const aiEnabled = () => Boolean(process.env.ANTHROPIC_API_KEY);
+const GATEWAY_URL = "https://ai-gateway.vercel.sh";
+const direct = () => Boolean(process.env.ANTHROPIC_API_KEY);
+
+/** Model id: Anthropic API directly, or the AI Gateway's provider-prefixed id. */
+export const AI_MODEL = process.env.ANTHROPIC_MODEL || (direct() ? "claude-opus-5-5" : "anthropic/claude-opus-5");
+const GATEWAY_FALLBACKS = ["anthropic/claude-sonnet-5"];
+
+/**
+ * AI is available with an Anthropic key, an AI Gateway key, or — when running
+ * on Vercel — the deployment's own OIDC token, which AI Gateway accepts.
+ */
+export const aiEnabled = () => direct() || Boolean(process.env.AI_GATEWAY_API_KEY) || Boolean(process.env.VERCEL);
+
+export const aiProvider = () => (direct() ? "Anthropic API" : "Vercel AI Gateway");
+
+async function client(): Promise<Anthropic> {
+  if (direct()) return new Anthropic();
+  const apiKey = process.env.AI_GATEWAY_API_KEY || (await getVercelOidcToken());
+  return new Anthropic({ apiKey, baseURL: GATEWAY_URL });
+}
+
+/** Gateway-only routing options (fallback models); ignored for the direct API. */
+const gatewayExtras = () => (direct() ? {} : { providerOptions: { gateway: { models: GATEWAY_FALLBACKS } } });
 
 const CATEGORIES = [
   "sale", "purchase", "services", "loan", "investment", "guarantee", "royalty",
@@ -54,21 +76,9 @@ Requirements:
 ${LODR_CHECKS.map((c) => `${c.id}: ${c.title} — ${c.description} (${c.source})`).join("\n")}`;
 
 export async function extractWithClaude(text: string, opts: ExtractOptions = {}): Promise<ExtractionResult> {
-  const client = new Anthropic();
   const lines = text.replace(/\r/g, "").split("\n");
   const numbered = lines.map((l, i) => `L${i + 1}: ${l}`).join("\n");
-
-  const response = await client.messages.parse({
-    model: AI_MODEL,
-    max_tokens: 16000,
-    output_config: { effort: "low", format: zodOutputFormat(ExtractionSchema) },
-    system: SYSTEM,
-    messages: [{ role: "user", content: `<rpt_note>\n${numbered}\n</rpt_note>` }],
-  });
-
-  if (response.stop_reason === "refusal") throw new Error("The model declined this request.");
-  const out = response.parsed_output;
-  if (!out) throw new Error("The model response could not be parsed.");
+  const out = await runExtraction(await client(), numbered);
 
   const { toCrore } = detectUnit(text);
   const note = out.note_reference || "RPT note";
@@ -127,8 +137,8 @@ export async function extractWithClaude(text: string, opts: ExtractOptions = {})
 }
 
 export async function analystNote(prompt: string): Promise<string> {
-  const client = new Anthropic();
-  const response = await client.messages.create({
+  const response = await (await client()).messages.create({
+    ...gatewayExtras(),
     model: AI_MODEL,
     max_tokens: 4000,
     output_config: { effort: "low" },
@@ -138,4 +148,39 @@ export async function analystNote(prompt: string): Promise<string> {
   });
   if (response.stop_reason === "refusal") throw new Error("declined");
   return response.content.map((b) => (b.type === "text" ? b.text : "")).join("").trim();
+}
+
+type Extraction = z.infer<typeof ExtractionSchema>;
+
+/**
+ * Structured outputs first; if the endpoint rejects output_config (a gateway may
+ * not forward it), ask for raw JSON and validate it against the same schema.
+ */
+async function runExtraction(c: Anthropic, numbered: string): Promise<Extraction> {
+  const user = `<rpt_note>\n${numbered}\n</rpt_note>`;
+  try {
+    const response = await c.messages.parse({
+      ...gatewayExtras(),
+      model: AI_MODEL,
+      max_tokens: 16000,
+      output_config: { effort: "low", format: zodOutputFormat(ExtractionSchema) },
+      system: SYSTEM,
+      messages: [{ role: "user", content: user }],
+    });
+    if (response.stop_reason === "refusal") throw new Error("The model declined this request.");
+    if (response.parsed_output) return response.parsed_output;
+  } catch (err) {
+    if (!(err instanceof Anthropic.BadRequestError)) throw err;
+  }
+  const response = await c.messages.create({
+    ...gatewayExtras(),
+    model: AI_MODEL,
+    max_tokens: 16000,
+    system: `${SYSTEM}\n\nRespond with a single JSON object only (no prose, no code fences) with keys: company, fiscal_year, note_reference, unit, revenue, net_worth, transactions[{party, relationship, nature, category, amount, previous_amount, line, quote}], disclosed_aggregate{amount, line, quote}|null, lodr_checks[{id, met, evidence}]. category is one of: ${CATEGORIES.join(", ")}.`,
+    messages: [{ role: "user", content: user }],
+  });
+  if (response.stop_reason === "refusal") throw new Error("The model declined this request.");
+  const raw = response.content.map((b) => (b.type === "text" ? b.text : "")).join("");
+  const json = raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1);
+  return ExtractionSchema.parse(JSON.parse(json));
 }

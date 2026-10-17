@@ -31,6 +31,7 @@ export default function ExtractPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ExtractionResult | null>(null);
   const [aiAvailable, setAiAvailable] = useState<boolean | null>(null);
+  const [aiProvider, setAiProvider] = useState<string | null>(null);
   const [activeLine, setActiveLine] = useState<number | null>(null);
 
   // PDF state
@@ -45,7 +46,10 @@ export default function ExtractPage() {
   useEffect(() => {
     fetch("/api/extract")
       .then((r) => r.json())
-      .then((d) => setAiAvailable(Boolean(d.ai)))
+      .then((d) => {
+        setAiAvailable(Boolean(d.ai));
+        setAiProvider(d.provider ?? null);
+      })
       .catch(() => setAiAvailable(false));
   }, []);
 
@@ -271,7 +275,7 @@ export default function ExtractPage() {
           </div>
           <div className="mt-4 flex items-center gap-2 text-xs text-slate-400">
             <span className={`h-2 w-2 rounded-full ${aiAvailable ? "bg-emerald-400" : aiAvailable === false ? "bg-amber-400" : "bg-slate-500"}`} />
-            {aiAvailable === null ? "Checking AI…" : aiAvailable ? "Claude connected" : "AI key not set — rule engine active"}
+            {aiAvailable === null ? "Checking AI…" : aiAvailable ? `Claude connected · ${aiProvider}` : "AI key not set — rule engine active"}
           </div>
           {error && <div className="mt-3 rounded-lg bg-rose-500/10 px-3 py-2 text-xs text-rose-300">{error}</div>}
         </Card>
