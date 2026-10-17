@@ -1,0 +1,36 @@
+{
+  "name": "rptscan",
+  "version": "1.0.0",
+  "private": true,
+  "description": "RPTScan — Related Party Disclosure Study: AI extraction of SEBI LODR related party transaction notes, disclosure quality scoring and governance outcome analytics for 100 NSE companies.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.135.0",
+    "next": "15.5.28",
+    "pdfjs-dist": "4.10.38",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "server-only": "^0.0.1",
+    "zod": "4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.2",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "autoprefixer": "10.4.20",
+    "postcss": "8.4.49",
+    "tailwindcss": "3.4.19",
+    "tsx": "^4.19.2",
+    "typescript": "5.9.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

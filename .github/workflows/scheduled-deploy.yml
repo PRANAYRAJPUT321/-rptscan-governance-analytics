@@ -1,0 +1,24 @@
+name: Scheduled Vercel deploy
+
+# Redeploys production every 15 minutes (in addition to the automatic deploy on
+# every push from the Vercel Git integration). Requires the repository secret
+# VERCEL_DEPLOY_HOOK_URL — create it in Vercel → Project → Settings → Git →
+# Deploy Hooks, then add it under GitHub → Settings → Secrets → Actions.
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Vercel deploy hook
+        env:
+          HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::warning::VERCEL_DEPLOY_HOOK_URL secret is not set; skipping."
+            exit 0
+          fi
+          curl -fsS -X POST "$HOOK"
